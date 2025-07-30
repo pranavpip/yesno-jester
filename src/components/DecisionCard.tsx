@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Trash2, Plus, ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -29,6 +29,7 @@ export function DecisionCard({ decision, onUpdate, onDelete }: DecisionCardProps
   const [newCon, setNewCon] = useState('');
   const [isAddingPro, setIsAddingPro] = useState(false);
   const [isAddingCon, setIsAddingCon] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   const pros = decision.items.filter(item => item.type === 'pro');
   const cons = decision.items.filter(item => item.type === 'con');
@@ -102,6 +103,61 @@ export function DecisionCard({ decision, onUpdate, onDelete }: DecisionCardProps
     }
   };
 
+  const generateAIProsAndCons = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-pros-cons', {
+        body: {
+          title: decision.title,
+          description: decision.description
+        }
+      });
+
+      if (error) throw error;
+
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+
+      // Add pros
+      for (const pro of data.pros) {
+        await supabase
+          .from('decision_items')
+          .insert({
+            decision_id: decision.id,
+            content: pro,
+            type: 'pro',
+            user_id: user.id
+          });
+      }
+
+      // Add cons
+      for (const con of data.cons) {
+        await supabase
+          .from('decision_items')
+          .insert({
+            decision_id: decision.id,
+            content: con,
+            type: 'con',
+            user_id: user.id
+          });
+      }
+
+      onUpdate();
+      toast({
+        title: "Success",
+        description: "AI-generated pros and cons added successfully!"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate AI suggestions. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const getLeaningEmoji = () => {
     if (leaningToward === 'Yes') return '✅';
     if (leaningToward === 'No') return '❌';
@@ -130,6 +186,16 @@ export function DecisionCard({ decision, onUpdate, onDelete }: DecisionCardProps
           <span className="text-sm text-muted-foreground">
             {pros.length} pros • {cons.length} cons
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={generateAIProsAndCons}
+            disabled={isGeneratingAI}
+            className="ml-auto"
+          >
+            <Sparkles className="h-4 w-4 mr-2" />
+            {isGeneratingAI ? 'Generating...' : 'AI Suggestions'}
+          </Button>
         </div>
       </CardHeader>
       
