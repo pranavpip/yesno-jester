@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { DecisionCard } from '@/components/DecisionCard';
+import { WebSearchResults } from '@/components/WebSearchResults';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Plus, LogOut, Brain } from 'lucide-react';
@@ -233,6 +234,10 @@ const Index = () => {
           </Card>
         ) : (
           <div className="grid gap-6">
+            <WebSearchResults 
+              decisionTitle="general decision making"
+              className="mb-6"
+            />
             {decisions.map((decision) => (
               <DecisionCard
                 key={decision.id}
